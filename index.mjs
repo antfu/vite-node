@@ -3,101 +3,134 @@ import { pathToFileURL } from 'url'
 import { join, dirname, resolve } from 'path'
 import { createServer } from 'vite'
 import createDebug from 'debug'
+import minimist from 'minimist'
+import { red, dim } from 'kolorist'
 
-const argv = process.argv.slice(2)
-
-const files = []
-const options = {}
-
-argv.forEach((arg) => {
-  if (arg.startsWith('--')) {
-    const [key, value] = arg.slice(2).split('=')
-    options[key] = value
-  }
-  else if (arg.startsWith('-')) {
-    Array.from(arg.slice(1)).forEach(flag => options[flag] = true)
-  }
-  else {
-    files.push(slash(resolve(arg)))
-  }
+const argv = minimist(process.argv.slice(2), {
+  alias: {
+    r: 'root',
+    c: 'config',
+    h: 'help',
+  },
+  string: ['root', 'config'],
+  boolean: ['help'],
+  unknown(name) {
+    if (name[0] === '-') {
+      console.error(red(`Unknown argument: ${name}`))
+      help()
+      process.exit(1)
+    }
+  },
 })
+const files = argv._
 
-if (!files.length) {
-  console.error('no files specified')
-  console.error('usage: vite-node [options] [files]')
-  process.exit(1)
+if (argv.help) {
+  help()
+  process.exit(0)
 }
 
-function slash(path) {
-  return path.replace(/\\/g, '/')
+if (!argv._.length) {
+  console.error(red('No files specified.'))
+  help()
+  process.exit(1)
 }
 
 const debugRequest = createDebug('vite-node:request')
 const debugTransform = createDebug('vite-node:transform')
 const AsyncFunction = Object.getPrototypeOf(async() => {}).constructor
 
-const base = process.cwd()
-const server = await createServer()
+const root = argv.root || process.cwd()
+process.chdir(root)
+
+const server = await createServer({
+  configFile: argv.config,
+  root,
+})
 await server.pluginContainer.buildStart({})
+await execute(files, server, argv)
+await server.close()
+process.exit(process.exitCode || 0)
 
-async function request(path) {
-  debugRequest(path)
+// --- CLI END ---
 
-  if (builtinModules.includes(path))
-    return import(path)
+async function execute(files, server) {
+  const cache = {}
 
-  const absolute = path.startsWith('/@fs/')
-    ? path.slice(3)
-    : slash(join(base, path.slice(1)))
+  async function request(path) {
+    debugRequest(path)
 
-  // for windows
-  const unifiedPath = absolute[0] !== '/'
-    ? `/${absolute}`
-    : absolute
+    if (builtinModules.includes(path))
+      return import(path)
 
-  if (path.includes('/node_modules/'))
-    return import(unifiedPath)
+    const absolute = path.startsWith('/@fs/')
+      ? path.slice(3)
+      : slash(join(server.config.root, path.slice(1)))
 
-  const result = await server.transformRequest(path, { ssr: true })
-  if (!result)
-    throw new Error(`failed to load ${path}`)
+    // for windows
+    const unifiedPath = absolute[0] !== '/'
+      ? `/${absolute}`
+      : absolute
 
-  debugTransform(path, result.code)
+    if (path.includes('/node_modules/'))
+      return import(unifiedPath)
 
-  const url = pathToFileURL(unifiedPath)
+    const result = await server.transformRequest(path, { ssr: true })
+    if (!result)
+      throw new Error(`failed to load ${path}`)
 
-  const exports = {}
+    debugTransform(path, result.code)
 
-  const context = {
-    require: createRequire(url),
-    __filename: absolute,
-    __dirname: dirname(absolute),
-    __vite_ssr_import__: cachedRequest,
-    __vite_ssr_dynamic_import__: cachedRequest,
-    __vite_ssr_exports__: exports,
-    __vite_ssr_exportAll__: obj => Object.assign(exports, obj),
-    __vite_ssr_import_meta__: { url },
+    const url = pathToFileURL(unifiedPath)
+
+    const exports = {}
+
+    const context = {
+      require: createRequire(url),
+      __filename: absolute,
+      __dirname: dirname(absolute),
+      __vite_ssr_import__: cachedRequest,
+      __vite_ssr_dynamic_import__: cachedRequest,
+      __vite_ssr_exports__: exports,
+      __vite_ssr_exportAll__: obj => Object.assign(exports, obj),
+      __vite_ssr_import_meta__: { url },
+    }
+
+    const fn = new AsyncFunction(
+      ...Object.keys(context),
+      result.code,
+    )
+
+    // prefetch deps
+    result.deps.forEach(dep => cachedRequest(dep))
+
+    await fn(...Object.values(context))
+    return exports
   }
 
-  const fn = new AsyncFunction(
-    ...Object.keys(context),
-    result.code,
-  )
+  function cachedRequest(path) {
+    if (!cache[path])
+      cache[path] = request(path)
+    return cache[path]
+  }
 
-  await fn(...Object.values(context))
-  return exports
+  const result = []
+  for (const file of files)
+    result.push(await request(`/@fs/${slash(resolve(file))}`))
+  return result
 }
 
-const cache = {}
-
-function cachedRequest(path) {
-  if (!cache[path])
-    cache[path] = request(path)
-  return cache[path]
+function slash(path) {
+  return path.replace(/\\/g, '/')
 }
 
-for (const file of files)
-  await request(`/@fs/${file}`)
+function help() {
+  // eslint-disable-next-line no-console
+  console.log(`
+Usage:
+  $ vite-node [options] [files]
 
-await server.close()
-process.exit(0)
+Options:
+  -r, --root <path>      ${dim('[string]')} use specified root directory 
+  -c, --config <file>    ${dim('[string]')} use specified config file 
+`)
+}
