@@ -24,6 +24,12 @@ npx vite-node index.ts
 - Respect `vite.config.ts`
 - Access to node modules like `fs`, `path` etc.
 
+## When NOT to Use
+
+- Production, yet - in very early stage, check it later
+- Most of the time when other tools can do that job
+  - We will need to start a Vite server upon each execution, which will have certain overhead. Only use it when you want the exactly same behavior as Vite or the powerful plugins system (for example, testing components that have Vite-specific setup).
+
 ## How?
 
 It fires up a Vite dev server, transforms the requests, and runs them in Node.
