@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "Vite as Node runtime",
   "type": "module",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "keywords": [
     "vite"
   ],
