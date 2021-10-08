@@ -9,14 +9,12 @@ specifiers:
   debug: ^4.3.2
   eslint: ^7.32.0
   esno: ^0.10.1
-  pathe: ^0.0.2
   typescript: ^4.4.3
   uvu: ^0.5.1
   vite: ^2.6.3
 
 dependencies:
   debug: 4.3.2
-  pathe: 0.0.2
   vite: 2.6.3
 
 devDependencies:
@@ -2319,10 +2317,6 @@ packages:
     resolution: {integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==}
     engines: {node: '>=8'}
     dev: true
-
-  /pathe/0.0.2:
-    resolution: {integrity: sha512-mmK20YtPb4yXHlaPuOD/uPIpRu7iIK45GA/GiRSlNpIdfWDG5aEQmFT1HHtBmJB+t/6DvFOtOsEipsPA8Bx2cw==}
-    dev: false
 
   /picocolors/0.2.1:
     resolution: {integrity: sha512-cMlDqaLEqfSaW8Z7N5Jw+lyIW869EzT73/F5lhtY9cLGoVxSXznfgfXMO0Z5K0o0Q2TkTXq+0KFsdnSe3jDViA==}

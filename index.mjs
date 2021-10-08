@@ -1,6 +1,6 @@
 import { builtinModules, createRequire } from 'module'
-import { URL } from 'url'
-import { join, dirname, resolve } from 'pathe'
+import { pathToFileURL } from 'url'
+import { join, dirname, resolve } from 'path'
 import { createServer } from 'vite'
 import createDebug from 'debug'
 
@@ -18,7 +18,7 @@ argv.forEach((arg) => {
     Array.from(arg.slice(1)).forEach(flag => options[flag] = true)
   }
   else {
-    files.push(resolve(arg))
+    files.push(slash(resolve(arg)))
   }
 })
 
@@ -26,6 +26,10 @@ if (!files.length) {
   console.error('no files specified')
   console.error('usage: vite-node [options] [files]')
   process.exit(1)
+}
+
+function slash(path) {
+  return path.replace(/\\/g, '/')
 }
 
 const debugRequest = createDebug('vite-node:request')
@@ -43,11 +47,16 @@ async function request(path) {
     return import(path)
 
   const absolute = path.startsWith('/@fs/')
-    ? path.slice(4)
-    : join(base, path.slice(1))
+    ? path.slice(3)
+    : slash(join(base, path.slice(1)))
+
+  // for windows
+  const unifiedPath = absolute[0] !== '/'
+    ? `/${absolute}`
+    : absolute
 
   if (path.includes('/node_modules/'))
-    return import(absolute)
+    return import(unifiedPath)
 
   const result = await server.transformRequest(path, { ssr: true })
   if (!result)
@@ -55,7 +64,7 @@ async function request(path) {
 
   debugTransform(path, result.code)
 
-  const url = new URL(absolute, 'file://')
+  const url = pathToFileURL(unifiedPath)
 
   const exports = {}
 
@@ -88,7 +97,7 @@ function cachedRequest(path) {
 }
 
 for (const file of files)
-  await request(`/@fs${file}`)
+  await request(`/@fs/${file}`)
 
 await server.close()
 process.exit(0)
