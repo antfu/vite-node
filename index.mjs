@@ -13,7 +13,7 @@ const argv = minimist(process.argv.slice(2), {
     h: 'help',
   },
   string: ['root', 'config'],
-  boolean: ['help'],
+  boolean: ['help', 'vue'],
   unknown(name) {
     if (name[0] === '-') {
       console.error(red(`Unknown argument: ${name}`))
@@ -45,6 +45,19 @@ process.chdir(root)
 const server = await createServer({
   configFile: argv.config,
   root,
+  resolve: argv.vue
+    ? {
+      alias: {
+        // fix for Vue does not support mjs yet
+        'vue/server-renderer': 'vue/server-renderer',
+        'vue/compiler-sfc': 'vue/compiler-sfc',
+        '@vue/reactivity': '@vue/reactivity/dist/reactivity.cjs.js',
+        '@vue/shared': '@vue/shared/dist/shared.cjs.js',
+        'vue-router': 'vue-router/dist/vue-router.cjs.js',
+        'vue': 'vue/dist/vue.cjs.js',
+      },
+    }
+    : {},
 })
 await server.pluginContainer.buildStart({})
 await execute(files, server, argv)
@@ -56,29 +69,35 @@ process.exit(process.exitCode || 0)
 async function execute(files, server) {
   const cache = {}
 
-  async function request(path) {
-    debugRequest(path)
+  async function request(id) {
+    // Virtual modules start with `\0`
+    if (id && id.startsWith('/@id/__x00__'))
+      id = `\0${id.slice('/@id/__x00__'.length)}`
+    if (id && id.startsWith('/@id/'))
+      id = id.slice('/@id/'.length)
 
-    if (builtinModules.includes(path))
-      return import(path)
+    if (builtinModules.includes(id))
+      return import(id)
 
-    const absolute = path.startsWith('/@fs/')
-      ? path.slice(3)
-      : slash(join(server.config.root, path.slice(1)))
+    const absolute = id.startsWith('/@fs/')
+      ? id.slice(3)
+      : slash(join(server.config.root, id.slice(1)))
+
+    debugRequest(absolute)
 
     // for windows
     const unifiedPath = absolute[0] !== '/'
       ? `/${absolute}`
       : absolute
 
-    if (path.includes('/node_modules/'))
+    if (id.includes('/node_modules/'))
       return import(unifiedPath)
 
-    const result = await server.transformRequest(path, { ssr: true })
+    const result = await server.transformRequest(id, { ssr: true })
     if (!result)
-      throw new Error(`failed to load ${path}`)
+      throw new Error(`failed to load ${id}`)
 
-    debugTransform(path, result.code)
+    debugTransform(id, result.code)
 
     const url = pathToFileURL(unifiedPath)
 
@@ -130,7 +149,8 @@ Usage:
   $ vite-node [options] [files]
 
 Options:
-  -r, --root <path>      ${dim('[string]')} use specified root directory 
-  -c, --config <file>    ${dim('[string]')} use specified config file 
+  -r, --root <path>      ${dim('[string]')} use specified root directory
+  -c, --config <file>    ${dim('[string]')} use specified config file
+  --vue                 ${dim('[boolean]')} support for importing Vue component
 `)
 }

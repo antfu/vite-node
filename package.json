@@ -2,10 +2,6 @@
   "name": "vite-node",
   "version": "0.0.1",
   "description": "Vite as Node runtime",
-  "type": "module",
-  "engines": {
-    "node": ">=14.0.0"
-  },
   "keywords": [
     "vite"
   ],
@@ -21,6 +17,7 @@
   "license": "MIT",
   "author": "Anthony Fu <anthonyfu117@hotmail.com>",
   "sideEffects": false,
+  "type": "module",
   "exports": {
     ".": {
       "import": "./index.mjs"
@@ -28,34 +25,39 @@
   },
   "main": "index.mjs",
   "module": "index.mjs",
+  "bin": {
+    "vite-node": "./bin/vite-node.js"
+  },
   "files": [
     "index.mjs",
     "bin"
   ],
-  "bin": {
-    "vite-node": "./bin/vite-node.js"
-  },
   "scripts": {
     "lint": "eslint \"**/*.{ts,mjs}\"",
     "release": "bumpp --commit --push --tag && pnpm publish",
     "start": "DEBUG=vite-node:* node index.mjs",
-    "test": "node index.mjs test/index.test.ts"
+    "test": "node index.mjs -c test/vite.config.ts --vue test/index.test.mjs"
+  },
+  "dependencies": {
+    "debug": "^4.3.2",
+    "kolorist": "^1.5.0",
+    "minimist": "^1.2.5",
+    "vite": "^2.6.5"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.9.0",
     "@antfu/ni": "^0.9.3",
     "@types/debug": "^4.1.7",
     "@types/node": "^16.10.3",
+    "@vitejs/plugin-vue": "^1.9.3",
     "bumpp": "^7.1.1",
     "eslint": "^7.32.0",
     "esno": "^0.10.1",
     "typescript": "^4.4.3",
-    "uvu": "^0.5.1"
+    "uvu": "^0.5.1",
+    "vue": "^3.2.20"
   },
-  "dependencies": {
-    "debug": "^4.3.2",
-    "kolorist": "^1.5.0",
-    "minimist": "^1.2.5",
-    "vite": "^2.6.3"
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
