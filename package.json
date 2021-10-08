@@ -1,0 +1,57 @@
+{
+  "name": "vite-node",
+  "version": "0.0.0",
+  "description": "Vite as Node runtime",
+  "type": "module",
+  "keywords": [
+    "vite"
+  ],
+  "homepage": "https://github.com/antfu/vite-node#readme",
+  "bugs": {
+    "url": "https://github.com/antfu/vite-node/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antfu/vite-node.git"
+  },
+  "funding": "https://github.com/sponsors/antfu",
+  "license": "MIT",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./index.mjs"
+    }
+  },
+  "main": "index.mjs",
+  "module": "index.mjs",
+  "files": [
+    "index.mjs",
+    "bin"
+  ],
+  "bin": {
+    "vite-node": "./bin/vite-node.js"
+  },
+  "scripts": {
+    "lint": "eslint \"**/*.{ts,mjs}\"",
+    "release": "bumpp --commit --push --tag && pnpm publish",
+    "start": "DEBUG=vite-node:* node index.mjs",
+    "test": "node index.mjs test/index.test.ts"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^0.9.0",
+    "@antfu/ni": "^0.9.3",
+    "@types/debug": "^4.1.7",
+    "@types/node": "^16.10.3",
+    "bumpp": "^7.1.1",
+    "eslint": "^7.32.0",
+    "esno": "^0.10.1",
+    "typescript": "^4.4.3",
+    "uvu": "^0.5.1"
+  },
+  "dependencies": {
+    "debug": "^4.3.2",
+    "pathe": "^0.0.2",
+    "vite": "^2.6.3"
+  }
+}
