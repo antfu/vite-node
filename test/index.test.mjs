@@ -10,7 +10,7 @@ assert.ok(bPath.includes('b.js'))
 assert.is(cValue, 'from-c')
 assert.equal(dir, resolve('test/fixtures').replace(/\\/g, '/'))
 assert.ok(VueComponent.__file.includes('component.vue'))
-assert.equal(await renderToString(createSSRApp(VueComponent)), '<div>0 x 2 = 0</div>')
+assert.equal(await renderToString(createSSRApp(VueComponent)), '<div>3 x 2 = 6</div>')
 // })
 
 // eslint-disable-next-line no-console
