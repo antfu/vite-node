@@ -6,9 +6,6 @@ Vite as Node runtime.
 
 > **EXPERIMENTAL**
 
-## Why?
-
-It runs Vite's id resolving, module transforming, and most importantly, the powerful plugins system!
 
 ## Usage
 
@@ -27,8 +24,12 @@ npx vite-node index.ts
 ## When NOT to Use
 
 - Production, yet - in very early stage, check it later
-- Most of the time when other tools can do that job
-  - We will need to start a Vite server upon each execution, which will have certain overhead. Only use it when you want the exactly same behavior as Vite or the powerful plugins system (for example, testing components that have Vite-specific setup).
+- Most of the time, when other tools can do that job
+  - We need to start a Vite server upon each execution, which inevitably introduces some overhead. Only use it when you want the same behavior as Vite or the powerful plugins system (for example, testing components with a Vite-specific setup).
+
+## Why?
+
+It runs Vite's id resolving, module transforming, and most importantly, the powerful plugins system!
 
 ## How?
 
