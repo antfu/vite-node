@@ -62,7 +62,6 @@ const server = await createServer({
 await server.pluginContainer.buildStart({})
 await execute(files, server, argv)
 await server.close()
-process.exit(process.exitCode || 0)
 
 // --- CLI END ---
 

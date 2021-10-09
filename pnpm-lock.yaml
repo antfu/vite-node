@@ -2,7 +2,7 @@ lockfileVersion: 5.3
 
 specifiers:
   '@antfu/eslint-config': ^0.9.0
-  '@antfu/ni': ^0.9.3
+  '@antfu/ni': ^0.10.0
   '@types/debug': ^4.1.7
   '@types/node': ^16.10.3
   '@vitejs/plugin-vue': ^1.9.3
@@ -13,7 +13,7 @@ specifiers:
   kolorist: ^1.5.0
   minimist: ^1.2.5
   typescript: ^4.4.3
-  uvu: ^0.5.1
+  uvu: ^0.5.2
   vite: ^2.6.5
   vue: ^3.2.20
 
@@ -25,7 +25,7 @@ dependencies:
 
 devDependencies:
   '@antfu/eslint-config': 0.9.0_eslint@7.32.0+typescript@4.4.3
-  '@antfu/ni': 0.9.3
+  '@antfu/ni': 0.10.0
   '@types/debug': 4.1.7
   '@types/node': 16.10.3
   '@vitejs/plugin-vue': 1.9.3_vite@2.6.5
@@ -33,7 +33,7 @@ devDependencies:
   eslint: 7.32.0
   esno: 0.10.1
   typescript: 4.4.3
-  uvu: 0.5.1
+  uvu: 0.5.2
   vue: 3.2.20
 
 packages:
@@ -127,8 +127,8 @@ packages:
       - typescript
     dev: true
 
-  /@antfu/ni/0.9.3:
-    resolution: {integrity: sha512-eOq0CHoxtVDCoP6Tm9WIbZ1i6W5U/8e0SgIBNHxaWJIA9hulAA9qwBaKR0Ak36rDy8Waq6K+qB37MfamnARCWA==}
+  /@antfu/ni/0.10.0:
+    resolution: {integrity: sha512-vBdbz/dXJjm8bpEmDuFo/rXC5cMwVO/1xnSVy+34H2RbVo40rB7zWLZZwFFhdYBRZuA+H/IPg2QOoUeaHKqVRQ==}
     hasBin: true
     dev: true
 
@@ -2928,8 +2928,8 @@ packages:
       punycode: 2.1.1
     dev: true
 
-  /uvu/0.5.1:
-    resolution: {integrity: sha512-JGxttnOGDFs77FaZ0yMUHIzczzQ5R1IlDeNW6Wymw6gAscwMdAffVOP6TlxLIfReZyK8tahoGwWZaTCJzNFDkg==}
+  /uvu/0.5.2:
+    resolution: {integrity: sha512-m2hLe7I2eROhh+tm3WE5cTo/Cv3WQA7Oc9f7JB6uWv+/zVKvfAm53bMyOoGOSZeQ7Ov2Fu9pLhFr7p07bnT20w==}
     engines: {node: '>=8'}
     hasBin: true
     dependencies:
