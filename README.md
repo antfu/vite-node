@@ -13,13 +13,21 @@ Vite as Node runtime.
 npx vite-node index.ts
 ```
 
+Options:
+
+```bash
+npx vite-node -h
+```
+
 ## Features
 
 - Out-of-box ESM & TypeScript support (possible for more with plugins)
 - Top-level await
-- Shims for `__dirname` and `__filename`
+- Vite plugins, resolve, aliasing
 - Respect `vite.config.ts`
-- Access to node modules like `fs`, `path` etc.
+- Shims for `__dirname` and `__filename` in ESM
+- Access to native node modules like `fs`, `path`, etc.
+- Watch mode (like `nodemon`)
 
 ## When NOT to Use
 

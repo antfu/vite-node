@@ -1,19 +1,22 @@
+/* eslint-disable no-console */
 import { builtinModules, createRequire } from 'module'
 import { pathToFileURL } from 'url'
 import { dirname, resolve, relative } from 'path'
 import { createServer } from 'vite'
 import createDebug from 'debug'
 import minimist from 'minimist'
-import { red, dim, yellow } from 'kolorist'
+import { red, dim, yellow, green, inverse, cyan } from 'kolorist'
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
     r: 'root',
     c: 'config',
     h: 'help',
+    w: 'watch',
+    s: 'silent',
   },
   string: ['root', 'config'],
-  boolean: ['help', 'vue'],
+  boolean: ['help', 'vue', 'watch', 'silent'],
   unknown(name) {
     if (name[0] === '-') {
       console.error(red(`Unknown argument: ${name}`))
@@ -43,6 +46,8 @@ const root = argv.root || process.cwd()
 process.chdir(root)
 
 const server = await createServer({
+  logLevel: 'error',
+  clearScreen: false,
   configFile: argv.config,
   root,
   resolve: argv.vue
@@ -60,8 +65,50 @@ const server = await createServer({
     : {},
 })
 await server.pluginContainer.buildStart({})
-await execute(files, server, argv)
-await server.close()
+let executing = false
+
+async function run() {
+  process.exitCode = 0
+  executing = true
+  let err
+  try {
+    await execute(files, server, argv)
+  }
+  catch (e) {
+    console.error(e)
+    err = e
+    if (!argv.watch)
+      process.exit(1)
+  }
+  finally {
+    executing = false
+  }
+
+  if (argv.watch) {
+    setTimeout(() => {
+      if (err || process.exitCode)
+        log(inverse(red(' vite node ')), red('program exited with error, waiting for file changes...'))
+      else
+        log(inverse(green(' vite node ')), green('program exited, waiting for file changes...'))
+    }, 10)
+  }
+  else {
+    await server.close()
+  }
+}
+
+if (argv.watch) {
+  log(inverse(cyan(' vite node ')), cyan('watch mode enabled\n'))
+
+  server.watcher.on('change', (file) => {
+    if (!executing) {
+      log(inverse(yellow(' vite node ')), yellow(`${file} changed, restarting...\n`))
+      run()
+    }
+  })
+}
+
+await run(files, server, argv)
 
 // --- CLI END ---
 
@@ -84,6 +131,11 @@ function toFilePath(id) {
 
 async function execute(files, server) {
   const __pendingModules__ = new Map()
+
+  const result = []
+  for (const file of files)
+    result.push(await cachedRequest(`/@fs/${slash(resolve(file))}`, []))
+  return result
 
   async function directRequest(rawId, callstack) {
     if (builtinModules.includes(rawId))
@@ -139,9 +191,8 @@ async function execute(files, server) {
     )
 
     // prefetch deps
-    result.deps.forEach(dep => request(dep))
-
     await fn(...Object.values(context))
+
     return exports
   }
 
@@ -166,11 +217,6 @@ async function execute(files, server) {
       }
     }
   }
-
-  const result = []
-  for (const file of files)
-    result.push(await cachedRequest(`/@fs/${slash(resolve(file))}`, []))
-  return result
 }
 
 function slash(path) {
@@ -178,7 +224,6 @@ function slash(path) {
 }
 
 function help() {
-  // eslint-disable-next-line no-console
   console.log(`
 Usage:
   $ vite-node [options] [files]
@@ -186,6 +231,14 @@ Usage:
 Options:
   -r, --root <path>      ${dim('[string]')} use specified root directory
   -c, --config <file>    ${dim('[string]')} use specified config file
+  -w, --watch           ${dim('[boolean]')} restart on file changes, similar to "nodemon"
+  -s, --silent          ${dim('[boolean]')} do not emit errors and logs
   --vue                 ${dim('[boolean]')} support for importing Vue component
 `)
+}
+
+function log(...args) {
+  if (argv.silent)
+    return
+  console.log(...args)
 }
