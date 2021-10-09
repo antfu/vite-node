@@ -1,10 +1,10 @@
 import { builtinModules, createRequire } from 'module'
 import { pathToFileURL } from 'url'
-import { join, dirname, resolve } from 'path'
+import { dirname, resolve, relative } from 'path'
 import { createServer } from 'vite'
 import createDebug from 'debug'
 import minimist from 'minimist'
-import { red, dim } from 'kolorist'
+import { red, dim, yellow } from 'kolorist'
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
@@ -65,22 +65,43 @@ await server.close()
 
 // --- CLI END ---
 
+function normalizeId(id) {
+  // Virtual modules start with `\0`
+  if (id && id.startsWith('/@id/__x00__'))
+    id = `\0${id.slice('/@id/__x00__'.length)}`
+  if (id && id.startsWith('/@id/'))
+    id = id.slice('/@id/'.length)
+  return id
+}
+
+function toFilePath(id) {
+  const absolute = id.startsWith('/@fs/')
+    ? id.slice(4)
+    : slash(resolve(server.config.root, id.slice(1)))
+
+  return absolute
+}
+
 async function execute(files, server) {
-  const cache = {}
+  const __pendingModules__ = new Map()
 
-  async function request(id) {
-    // Virtual modules start with `\0`
-    if (id && id.startsWith('/@id/__x00__'))
-      id = `\0${id.slice('/@id/__x00__'.length)}`
-    if (id && id.startsWith('/@id/'))
-      id = id.slice('/@id/'.length)
+  async function directRequest(rawId, callstack) {
+    if (builtinModules.includes(rawId))
+      return import(rawId)
 
-    if (builtinModules.includes(id))
-      return import(id)
+    callstack = [...callstack, rawId]
+    const request = async(dep) => {
+      if (callstack.includes(dep)) {
+        throw new Error(`${red('Circular dependency detected')}\nStack:\n${[...callstack, dep].reverse().map((i) => {
+          const path = relative(server.config.root, toFilePath(normalizeId(i)))
+          return dim(' -> ') + (i === dep ? yellow(path) : path)
+        }).join('\n')}\n`)
+      }
+      return cachedRequest(dep, callstack)
+    }
 
-    const absolute = id.startsWith('/@fs/')
-      ? id.slice(3)
-      : slash(join(server.config.root, id.slice(1)))
+    const id = normalizeId(rawId)
+    const absolute = toFilePath(id)
 
     debugRequest(absolute)
 
@@ -89,7 +110,7 @@ async function execute(files, server) {
       ? `/${absolute}`
       : absolute
 
-    if (id.includes('/node_modules/'))
+    if (absolute.includes('/node_modules/'))
       return import(unifiedPath)
 
     const result = await server.transformRequest(id, { ssr: true })
@@ -99,17 +120,16 @@ async function execute(files, server) {
     debugTransform(id, result.code)
 
     const url = pathToFileURL(unifiedPath)
-
     const exports = {}
 
     const context = {
       require: createRequire(url),
       __filename: absolute,
       __dirname: dirname(absolute),
-      __vite_ssr_import__: cachedRequest,
-      __vite_ssr_dynamic_import__: cachedRequest,
+      __vite_ssr_import__: request,
+      __vite_ssr_dynamic_import__: request,
       __vite_ssr_exports__: exports,
-      __vite_ssr_exportAll__: obj => Object.assign(exports, obj),
+      __vite_ssr_exportAll__: obj => exportAll(exports, obj),
       __vite_ssr_import_meta__: { url },
     }
 
@@ -119,21 +139,37 @@ async function execute(files, server) {
     )
 
     // prefetch deps
-    result.deps.forEach(dep => cachedRequest(dep))
+    result.deps.forEach(dep => request(dep))
 
     await fn(...Object.values(context))
     return exports
   }
 
-  function cachedRequest(path) {
-    if (!cache[path])
-      cache[path] = request(path)
-    return cache[path]
+  function cachedRequest(id, callstack) {
+    if (!__pendingModules__[id])
+      __pendingModules__[id] = directRequest(id, callstack)
+    return __pendingModules__[id]
+  }
+
+  function exportAll(exports, sourceModule) {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const key in sourceModule) {
+      if (key !== 'default') {
+        try {
+          Object.defineProperty(exports, key, {
+            enumerable: true,
+            configurable: true,
+            get() { return sourceModule[key] },
+          })
+        }
+        catch (_err) { }
+      }
+    }
   }
 
   const result = []
   for (const file of files)
-    result.push(await request(`/@fs/${slash(resolve(file))}`))
+    result.push(await cachedRequest(`/@fs/${slash(resolve(file))}`, []))
   return result
 }
 
