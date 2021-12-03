@@ -31,16 +31,15 @@
   "module": "./index.mjs",
   "types": "./index.d.ts",
   "bin": {
-    "vite-node": "./bin/vite-node.mjs"
+    "vite-node": ".vite-node.mjs"
   },
   "files": [
-    "index.mjs",
-    "bin"
+    "*.mjs"
   ],
   "scripts": {
     "lint": "eslint \"**/*.{ts,mjs}\"",
     "release": "bumpp --commit --push --tag && pnpm publish",
-    "start": "DEBUG=vite-node:* node index.mjs",
+    "start": "DEBUG=vite-node:* node cli.mjs",
     "test": "node cli.mjs -c test/vite.config.ts --vue test/index.test.mjs"
   },
   "dependencies": {
