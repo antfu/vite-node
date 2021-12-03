@@ -8,8 +8,6 @@ import createDebug from 'debug'
 import minimist from 'minimist'
 import { red, dim, yellow, green, inverse, cyan } from 'kolorist'
 
-const CALLSTACK_KEY = '__viteNodeCallstack'
-
 const argv = minimist(process.argv.slice(2), {
   alias: {
     r: 'root',
@@ -77,10 +75,6 @@ async function run() {
     await execute(files, server, argv)
   }
   catch (e) {
-    if (CALLSTACK_KEY in e) {
-      console.error(red('Error on executing:'))
-      console.error(red(`${e[CALLSTACK_KEY].map(i => ` - ${relative(root, i.path)}`).join('\n')} \n`))
-    }
     console.error(e)
     err = e
     if (!argv.watch)
@@ -191,23 +185,11 @@ async function execute(files, server) {
       __vite_ssr_import_meta__: { url },
     }
 
-    try {
-      const fn = vm.runInThisContext(`async (${Object.keys(context).join(',')}) => { ${result.code} }`, {
-        absolute,
-        lineOffset: 0,
-      })
-      await fn(...Object.values(context))
-    }
-    catch (e) {
-      try {
-        if (!e[CALLSTACK_KEY])
-          Object.defineProperty(e, CALLSTACK_KEY, { value: [], enumerable: false })
-        e[CALLSTACK_KEY].push({ path: absolute, error: e })
-      }
-      catch {}
-
-      throw e
-    }
+    const fn = vm.runInThisContext(`async (${Object.keys(context).join(',')}) => { ${result.code} }`, {
+      filename: absolute,
+      lineOffset: 0,
+    })
+    await fn(...Object.values(context))
 
     return exports
   }
