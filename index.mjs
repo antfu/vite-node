@@ -109,7 +109,9 @@ function normalizeId(id) {
 function toFilePath(id, server) {
   let absolute = id.startsWith('/@fs/')
     ? id.slice(4)
-    : slash(resolve(server.config.root, id.slice(1)))
+    : id.startsWith(dirname(server.config.root))
+      ? id
+      : slash(resolve(server.config.root, id.slice(1)))
 
   if (absolute.startsWith('//'))
     absolute = absolute.slice(1)
