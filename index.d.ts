@@ -6,6 +6,7 @@ export interface Options {
   silent?: boolean
   config?: string
   defaultConfig?: InlineConfig
+  shouldExternalize?: (id: string) => boolean
 }
 
 export function run(options: Options): Promise<void>

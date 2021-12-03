@@ -28,6 +28,8 @@ export async function run(argv) {
 
   const files = argv.files || argv._
 
+  const shouldExternalize = argv.shouldExternalize || (id => id.includes('/node_modules/'))
+
   const server = await createServer(mergeConfig(argv.defaultConfig || {}, {
     logLevel: 'error',
     clearScreen: false,
@@ -51,7 +53,7 @@ export async function run(argv) {
 
   async function run() {
     try {
-      await execute(files, server, argv)
+      await execute(files, server, shouldExternalize)
     }
     catch (e) {
       console.error(e)
@@ -108,7 +110,7 @@ function toFilePath(id, server) {
   return absolute
 }
 
-async function execute(files, server) {
+async function execute(files, server, shouldExternalize) {
   const __pendingModules__ = new Map()
 
   const result = []
@@ -141,7 +143,7 @@ async function execute(files, server) {
       ? `/${absolute}`
       : absolute
 
-    if (absolute.includes('/node_modules/'))
+    if (shouldExternalize(absolute))
       return import(unifiedPath)
 
     const result = await server.transformRequest(id, { ssr: true })
