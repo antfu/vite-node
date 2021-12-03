@@ -3,7 +3,7 @@ import { builtinModules, createRequire } from 'module'
 import { pathToFileURL } from 'url'
 import { dirname, resolve, relative } from 'path'
 import vm from 'vm'
-import { createServer } from 'vite'
+import { createServer, mergeConfig } from 'vite'
 import createDebug from 'debug'
 import { red, dim, yellow, green, inverse, cyan } from 'kolorist'
 
@@ -12,7 +12,11 @@ const debugTransform = createDebug('vite-node:transform')
 
 let executing = false
 
-export async function startAndRun(argv) {
+export async function run(argv) {
+  process.exitCode = 0
+  executing = true
+  let err
+
   function log(...args) {
     if (argv.silent)
       return
@@ -24,7 +28,7 @@ export async function startAndRun(argv) {
 
   const files = argv.files || argv._
 
-  const server = await createServer({
+  const server = await createServer(mergeConfig(argv.defaultConfig || {}, {
     logLevel: 'error',
     clearScreen: false,
     configFile: argv.config,
@@ -42,10 +46,23 @@ export async function startAndRun(argv) {
         },
       }
       : {},
-  })
+  }))
   await server.pluginContainer.buildStart({})
 
-  await run(files, server, argv)
+  async function run() {
+    try {
+      await execute(files, server, argv)
+    }
+    catch (e) {
+      console.error(e)
+      err = e
+      if (!argv.watch)
+        process.exit(1)
+    }
+    finally {
+      executing = false
+    }
+  }
 
   if (argv.watch) {
     log(inverse(cyan(' vite node ')), cyan('watch mode enabled\n'))
@@ -57,29 +74,8 @@ export async function startAndRun(argv) {
       }
     })
   }
-}
-
-async function run(files, server, argv) {
-  process.exitCode = 0
-  executing = true
-  let err
-  try {
-    await execute(files, server, argv)
-  }
-  catch (e) {
-    console.error(e)
-    err = e
-    if (!argv.watch)
-      process.exit(1)
-  }
-  finally {
-    executing = false
-  }
-
-  function log(...args) {
-    if (argv.silent)
-      return
-    console.log(...args)
+  else {
+    await run()
   }
 
   if (argv.watch) {

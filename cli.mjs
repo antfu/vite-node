@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import minimist from 'minimist'
 import { red, dim } from 'kolorist'
-import { startAndRun } from './index.mjs'
+import { run } from './index.mjs'
 
 const argv = minimist(process.argv.slice(2), {
   'alias': {
@@ -37,7 +37,7 @@ if (!argv._.length) {
 // forward argv
 process.argv = [process.argv.slice(0, 2), ...argv['--']]
 
-startAndRun(argv)
+run(argv)
 
 function help() {
   console.log(`
