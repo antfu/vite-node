@@ -9,15 +9,16 @@ import minimist from 'minimist'
 import { red, dim, yellow, green, inverse, cyan } from 'kolorist'
 
 const argv = minimist(process.argv.slice(2), {
-  alias: {
+  'alias': {
     r: 'root',
     c: 'config',
     h: 'help',
     w: 'watch',
     s: 'silent',
   },
-  string: ['root', 'config'],
-  boolean: ['help', 'vue', 'watch', 'silent'],
+  '--': true,
+  'string': ['root', 'config'],
+  'boolean': ['help', 'vue', 'watch', 'silent'],
   unknown(name) {
     if (name[0] === '-') {
       console.error(red(`Unknown argument: ${name}`))
@@ -38,6 +39,9 @@ if (!argv._.length) {
   help()
   process.exit(1)
 }
+
+// forward argv
+process.argv = [process.argv.slice(0, 2), ...argv['--']]
 
 const debugRequest = createDebug('vite-node:request')
 const debugTransform = createDebug('vite-node:transform')
