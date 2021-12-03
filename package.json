@@ -1,6 +1,6 @@
 {
   "name": "vite-node",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Vite as Node runtime",
   "keywords": [
     "vite"
