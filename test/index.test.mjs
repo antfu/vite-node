@@ -10,7 +10,7 @@ const test = suite()
 test('nested export', async() => {
   assert.ok(bPath.includes('b.js'))
   assert.is(cValue, 'from-c')
-  assert.equal(dir, resolve('test/fixtures').replace(/\\/g, '/'))
+  assert.equal(dir.replace(/^\//, ''), resolve('test/fixtures').replace(/\\/g, '/').replace(/^\//, ''))
 })
 
 test('vue component', async() => {
