@@ -2,10 +2,13 @@
 import { builtinModules, createRequire } from 'module'
 import { pathToFileURL } from 'url'
 import { dirname, resolve, relative } from 'path'
+import vm from 'vm'
 import { createServer } from 'vite'
 import createDebug from 'debug'
 import minimist from 'minimist'
 import { red, dim, yellow, green, inverse, cyan } from 'kolorist'
+
+const CALLSTACK_KEY = '__viteNodeCallstack'
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
@@ -40,7 +43,6 @@ if (!argv._.length) {
 
 const debugRequest = createDebug('vite-node:request')
 const debugTransform = createDebug('vite-node:transform')
-const AsyncFunction = Object.getPrototypeOf(async() => {}).constructor
 
 const root = argv.root || process.cwd()
 process.chdir(root)
@@ -75,6 +77,10 @@ async function run() {
     await execute(files, server, argv)
   }
   catch (e) {
+    if (CALLSTACK_KEY in e) {
+      console.error(red('Error on executing:'))
+      console.error(red(`${e[CALLSTACK_KEY].map(i => ` - ${relative(root, i.path)}`).join('\n')} \n`))
+    }
     console.error(e)
     err = e
     if (!argv.watch)
@@ -185,21 +191,32 @@ async function execute(files, server) {
       __vite_ssr_import_meta__: { url },
     }
 
-    const fn = new AsyncFunction(
-      ...Object.keys(context),
-      result.code,
-    )
+    try {
+      const fn = vm.runInThisContext(`async (${Object.keys(context).join(',')}) => { ${result.code} }`, {
+        absolute,
+        lineOffset: 0,
+      })
+      await fn(...Object.values(context))
+    }
+    catch (e) {
+      try {
+        if (!e[CALLSTACK_KEY])
+          Object.defineProperty(e, CALLSTACK_KEY, { value: [], enumerable: false })
+        e[CALLSTACK_KEY].push({ path: absolute, error: e })
+      }
+      catch {}
 
-    // prefetch deps
-    await fn(...Object.values(context))
+      throw e
+    }
 
     return exports
   }
 
-  function cachedRequest(id, callstack) {
-    if (!__pendingModules__[id])
-      __pendingModules__[id] = directRequest(id, callstack)
-    return __pendingModules__[id]
+  async function cachedRequest(id, callstack) {
+    if (__pendingModules__[id])
+      return __pendingModules__[id]
+    __pendingModules__[id] = directRequest(id, callstack)
+    return await __pendingModules__[id]
   }
 
   function exportAll(exports, sourceModule) {
