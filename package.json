@@ -31,7 +31,7 @@
   "module": "./index.mjs",
   "types": "./index.d.ts",
   "bin": {
-    "vite-node": ".vite-node.mjs"
+    "vite-node": "./vite-node.mjs"
   },
   "files": [
     "*.mjs"
