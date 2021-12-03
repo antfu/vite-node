@@ -51,6 +51,10 @@ export async function run(argv) {
   }))
   await server.pluginContainer.buildStart({})
 
+  process.__vite_node__ = {
+    server,
+  }
+
   async function run() {
     try {
       await execute(files, server, shouldExternalize)
