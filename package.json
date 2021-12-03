@@ -20,13 +20,18 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./index.mjs"
+      "import": "./index.mjs",
+      "types": "./index.d.ts"
+    },
+    "./cli": {
+      "import": "./cli.mjs"
     }
   },
-  "main": "index.mjs",
-  "module": "index.mjs",
+  "main": "./index.mjs",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
   "bin": {
-    "vite-node": "./bin/vite-node.js"
+    "vite-node": "./bin/vite-node.mjs"
   },
   "files": [
     "index.mjs",
@@ -36,7 +41,7 @@
     "lint": "eslint \"**/*.{ts,mjs}\"",
     "release": "bumpp --commit --push --tag && pnpm publish",
     "start": "DEBUG=vite-node:* node index.mjs",
-    "test": "node index.mjs -c test/vite.config.ts --vue test/index.test.mjs"
+    "test": "node cli.mjs -c test/vite.config.ts --vue test/index.test.mjs"
   },
   "dependencies": {
     "debug": "^4.3.3",

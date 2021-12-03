@@ -5,73 +5,61 @@ import { dirname, resolve, relative } from 'path'
 import vm from 'vm'
 import { createServer } from 'vite'
 import createDebug from 'debug'
-import minimist from 'minimist'
 import { red, dim, yellow, green, inverse, cyan } from 'kolorist'
-
-const argv = minimist(process.argv.slice(2), {
-  'alias': {
-    r: 'root',
-    c: 'config',
-    h: 'help',
-    w: 'watch',
-    s: 'silent',
-  },
-  '--': true,
-  'string': ['root', 'config'],
-  'boolean': ['help', 'vue', 'watch', 'silent'],
-  unknown(name) {
-    if (name[0] === '-') {
-      console.error(red(`Unknown argument: ${name}`))
-      help()
-      process.exit(1)
-    }
-  },
-})
-const files = argv._
-
-if (argv.help) {
-  help()
-  process.exit(0)
-}
-
-if (!argv._.length) {
-  console.error(red('No files specified.'))
-  help()
-  process.exit(1)
-}
-
-// forward argv
-process.argv = [process.argv.slice(0, 2), ...argv['--']]
 
 const debugRequest = createDebug('vite-node:request')
 const debugTransform = createDebug('vite-node:transform')
 
-const root = argv.root || process.cwd()
-process.chdir(root)
-
-const server = await createServer({
-  logLevel: 'error',
-  clearScreen: false,
-  configFile: argv.config,
-  root,
-  resolve: argv.vue
-    ? {
-      alias: {
-        // fix for Vue does not support mjs yet
-        'vue/server-renderer': 'vue/server-renderer',
-        'vue/compiler-sfc': 'vue/compiler-sfc',
-        '@vue/reactivity': '@vue/reactivity/dist/reactivity.cjs.js',
-        '@vue/shared': '@vue/shared/dist/shared.cjs.js',
-        'vue-router': 'vue-router/dist/vue-router.cjs.js',
-        'vue': 'vue/dist/vue.cjs.js',
-      },
-    }
-    : {},
-})
-await server.pluginContainer.buildStart({})
 let executing = false
 
-async function run() {
+export async function startAndRun(argv) {
+  function log(...args) {
+    if (argv.silent)
+      return
+    console.log(...args)
+  }
+
+  const root = argv.root || process.cwd()
+  process.chdir(root)
+
+  const files = argv.files || argv._
+
+  const server = await createServer({
+    logLevel: 'error',
+    clearScreen: false,
+    configFile: argv.config,
+    root,
+    resolve: argv.vue
+      ? {
+        alias: {
+          // fix for Vue does not support mjs yet
+          'vue/server-renderer': 'vue/server-renderer',
+          'vue/compiler-sfc': 'vue/compiler-sfc',
+          '@vue/reactivity': '@vue/reactivity/dist/reactivity.cjs.js',
+          '@vue/shared': '@vue/shared/dist/shared.cjs.js',
+          'vue-router': 'vue-router/dist/vue-router.cjs.js',
+          'vue': 'vue/dist/vue.cjs.js',
+        },
+      }
+      : {},
+  })
+  await server.pluginContainer.buildStart({})
+
+  await run(files, server, argv)
+
+  if (argv.watch) {
+    log(inverse(cyan(' vite node ')), cyan('watch mode enabled\n'))
+
+    server.watcher.on('change', (file) => {
+      if (!executing) {
+        log(inverse(yellow(' vite node ')), yellow(`${file} changed, restarting...\n`))
+        run()
+      }
+    })
+  }
+}
+
+async function run(files, server, argv) {
   process.exitCode = 0
   executing = true
   let err
@@ -88,6 +76,12 @@ async function run() {
     executing = false
   }
 
+  function log(...args) {
+    if (argv.silent)
+      return
+    console.log(...args)
+  }
+
   if (argv.watch) {
     setTimeout(() => {
       if (err || process.exitCode)
@@ -101,21 +95,6 @@ async function run() {
   }
 }
 
-if (argv.watch) {
-  log(inverse(cyan(' vite node ')), cyan('watch mode enabled\n'))
-
-  server.watcher.on('change', (file) => {
-    if (!executing) {
-      log(inverse(yellow(' vite node ')), yellow(`${file} changed, restarting...\n`))
-      run()
-    }
-  })
-}
-
-await run(files, server, argv)
-
-// --- CLI END ---
-
 function normalizeId(id) {
   // Virtual modules start with `\0`
   if (id && id.startsWith('/@id/__x00__'))
@@ -125,7 +104,7 @@ function normalizeId(id) {
   return id
 }
 
-function toFilePath(id) {
+function toFilePath(id, server) {
   const absolute = id.startsWith('/@fs/')
     ? id.slice(4)
     : slash(resolve(server.config.root, id.slice(1)))
@@ -149,7 +128,7 @@ async function execute(files, server) {
     const request = async(dep) => {
       if (callstack.includes(dep)) {
         throw new Error(`${red('Circular dependency detected')}\nStack:\n${[...callstack, dep].reverse().map((i) => {
-          const path = relative(server.config.root, toFilePath(normalizeId(i)))
+          const path = relative(server.config.root, toFilePath(normalizeId(i), server))
           return dim(' -> ') + (i === dep ? yellow(path) : path)
         }).join('\n')}\n`)
       }
@@ -157,7 +136,7 @@ async function execute(files, server) {
     }
 
     const id = normalizeId(rawId)
-    const absolute = toFilePath(id)
+    const absolute = toFilePath(id, server)
 
     debugRequest(absolute)
 
@@ -224,24 +203,4 @@ async function execute(files, server) {
 
 function slash(path) {
   return path.replace(/\\/g, '/')
-}
-
-function help() {
-  console.log(`
-Usage:
-  $ vite-node [options] [files]
-
-Options:
-  -r, --root <path>      ${dim('[string]')} use specified root directory
-  -c, --config <file>    ${dim('[string]')} use specified config file
-  -w, --watch           ${dim('[boolean]')} restart on file changes, similar to "nodemon"
-  -s, --silent          ${dim('[boolean]')} do not emit errors and logs
-  --vue                 ${dim('[boolean]')} support for importing Vue component
-`)
-}
-
-function log(...args) {
-  if (argv.silent)
-    return
-  console.log(...args)
 }
