@@ -107,9 +107,14 @@ function normalizeId(id) {
 }
 
 function toFilePath(id, server) {
-  const absolute = id.startsWith('/@fs/')
+  let absolute = id.startsWith('/@fs/')
     ? id.slice(4)
     : slash(resolve(server.config.root, id.slice(1)))
+
+  if (absolute.startsWith('//'))
+    absolute = absolute.slice(1)
+  if (!absolute.startsWith('/'))
+    absolute = `/${absolute}`
 
   return absolute
 }
@@ -142,13 +147,8 @@ async function execute(files, server, shouldExternalize) {
 
     debugRequest(absolute)
 
-    // for windows
-    const unifiedPath = absolute[0] !== '/'
-      ? `/${absolute}`
-      : absolute
-
     if (shouldExternalize(absolute))
-      return import(unifiedPath)
+      return import(absolute)
 
     const result = await server.transformRequest(id, { ssr: true })
     if (!result)
@@ -156,7 +156,7 @@ async function execute(files, server, shouldExternalize) {
 
     debugTransform(id, result.code)
 
-    const url = pathToFileURL(unifiedPath)
+    const url = pathToFileURL(absolute)
     const exports = {}
 
     const context = {
