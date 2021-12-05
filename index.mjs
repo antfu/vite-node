@@ -111,12 +111,14 @@ function toFilePath(id, server) {
     ? id.slice(4)
     : id.startsWith(dirname(server.config.root))
       ? id
-      : slash(resolve(server.config.root, id.slice(1)))
+      : id.startsWith('/')
+        ? slash(resolve(server.config.root, id.slice(1)))
+        : id
 
   if (absolute.startsWith('//'))
     absolute = absolute.slice(1)
-  if (!absolute.startsWith('/'))
-    absolute = `/${absolute}`
+  // if (!absolute.startsWith('/'))
+  //   absolute = `/${absolute}`
 
   return absolute
 }
@@ -129,11 +131,8 @@ async function execute(files, server, shouldExternalize) {
     result.push(await cachedRequest(`/@fs/${slash(resolve(file))}`, []))
   return result
 
-  async function directRequest(rawId, callstack) {
-    if (builtinModules.includes(rawId))
-      return import(rawId)
-
-    callstack = [...callstack, rawId]
+  async function directRequest(id, fsPath, callstack) {
+    callstack = [...callstack, id]
     const request = async(dep) => {
       if (callstack.includes(dep)) {
         throw new Error(`${red('Circular dependency detected')}\nStack:\n${[...callstack, dep].reverse().map((i) => {
@@ -144,13 +143,7 @@ async function execute(files, server, shouldExternalize) {
       return cachedRequest(dep, callstack)
     }
 
-    const id = normalizeId(rawId)
-    const absolute = toFilePath(id, server)
-
-    debugRequest(absolute)
-
-    if (shouldExternalize(absolute))
-      return import(absolute)
+    debugRequest(fsPath)
 
     const result = await server.transformRequest(id, { ssr: true })
     if (!result)
@@ -158,13 +151,13 @@ async function execute(files, server, shouldExternalize) {
 
     debugTransform(id, result.code)
 
-    const url = pathToFileURL(absolute)
+    const url = pathToFileURL(fsPath)
     const exports = {}
 
     const context = {
       require: createRequire(url),
-      __filename: absolute,
-      __dirname: dirname(absolute),
+      __filename: fsPath,
+      __dirname: dirname(fsPath),
       __vite_ssr_import__: request,
       __vite_ssr_dynamic_import__: request,
       __vite_ssr_exports__: exports,
@@ -173,7 +166,7 @@ async function execute(files, server, shouldExternalize) {
     }
 
     const fn = vm.runInThisContext(`async (${Object.keys(context).join(',')}) => { ${result.code} }`, {
-      filename: absolute,
+      filename: fsPath,
       lineOffset: 0,
     })
     await fn(...Object.values(context))
@@ -181,11 +174,20 @@ async function execute(files, server, shouldExternalize) {
     return exports
   }
 
-  async function cachedRequest(id, callstack) {
-    if (__pendingModules__[id])
-      return __pendingModules__[id]
-    __pendingModules__[id] = directRequest(id, callstack)
-    return await __pendingModules__[id]
+  async function cachedRequest(rawId, callstack) {
+    if (builtinModules.includes(rawId))
+      return import(rawId)
+
+    const id = normalizeId(rawId)
+    const fsPath = toFilePath(id, server)
+
+    if (shouldExternalize(fsPath))
+      return import(fsPath)
+
+    if (__pendingModules__.has(fsPath))
+      return __pendingModules__.get(fsPath)
+    __pendingModules__.set(fsPath, directRequest(id, fsPath, callstack))
+    return await __pendingModules__.get(fsPath)
   }
 
   function exportAll(exports, sourceModule) {
