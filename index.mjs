@@ -117,8 +117,8 @@ function toFilePath(id, server) {
 
   if (absolute.startsWith('//'))
     absolute = absolute.slice(1)
-  // if (!absolute.startsWith('/'))
-  //   absolute = `/${absolute}`
+  if (!absolute.startsWith('/'))
+    absolute = `/${absolute}`
 
   return absolute
 }
