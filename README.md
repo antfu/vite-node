@@ -1,3 +1,7 @@
+# Project Moved to [Vitest Monorepo](https://github.com/vitest-dev/vitest/tree/main/packages/vite-node)
+
+<details>
+
 # vite-node
 
 [![NPM version](https://img.shields.io/npm/v/vite-node?color=a1b858&label=)](https://www.npmjs.com/package/vite-node)
@@ -60,3 +64,5 @@ Thanks [@brillout](https://github.com/brillout) for kindly sharing this package 
 ## License
 
 [MIT](./LICENSE) License © 2021 [Anthony Fu](https://github.com/antfu)
+  
+</details>
